@@ -26,9 +26,13 @@ This project implements and compares three fundamental queuing strategies:
 ├── queuing_strategies.py    # Implementation of FCFS, PQ, and RR strategies
 ├── simulation.py            # Packet generation and simulation framework
 ├── visualization.py         # Visualization and plotting utilities
-├── main.py                  # Main simulation runner
+├── main.py                  # Main simulation runner with 5 experiments
+├── example.py               # Simple example demonstrating basic usage
+├── test_queuing.py          # Unit tests for all components
 ├── requirements.txt         # Python dependencies
+├── .gitignore              # Git ignore patterns
 └── results/                 # Output directory for generated plots
+    ├── .gitkeep
     ├── basic_comparison.png
     ├── high_traffic_latency.png
     ├── priority_fairness.png
@@ -51,6 +55,14 @@ pip install -r requirements.txt
 
 ## Usage
 
+### Quick Start
+
+Run the simple example to see the basic functionality:
+
+```bash
+python example.py
+```
+
 ### Running the Full Simulation
 
 Execute the main simulation script to run all experiments:
@@ -64,6 +76,14 @@ This will:
 - Generate performance metrics for each strategy
 - Create visualization plots in the `results/` directory
 - Print comprehensive performance comparisons to console
+
+### Running Tests
+
+Execute the unit tests to verify functionality:
+
+```bash
+python test_queuing.py
+```
 
 ### Custom Experiments
 
