@@ -28,6 +28,7 @@ This project implements and compares three fundamental queuing strategies:
 ├── visualization.py         # Visualization and plotting utilities
 ├── main.py                  # Main simulation runner with 5 experiments
 ├── example.py               # Simple example demonstrating basic usage
+├── custom_simulation.py     # Interactive/CLI tool for custom simulations
 ├── test_queuing.py          # Unit tests for all components
 ├── requirements.txt         # Python dependencies
 ├── .gitignore              # Git ignore patterns
@@ -61,6 +62,21 @@ Run the simple example to see the basic functionality:
 
 ```bash
 python example.py
+```
+
+### Running Custom Simulations
+
+Use the custom simulation script to run experiments with your own parameters:
+
+```bash
+# Interactive mode
+python custom_simulation.py
+
+# Command-line mode
+python custom_simulation.py <num_packets> <arrival_rate> <high_priority_ratio> <seed>
+
+# Example: 200 packets, 3.0 arrival rate, 30% high priority, seed 42
+python custom_simulation.py 200 3.0 0.3 42
 ```
 
 ### Running the Full Simulation
