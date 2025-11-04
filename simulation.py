@@ -3,6 +3,7 @@ Simulation framework for testing QoS queuing strategies.
 """
 
 import random
+import copy
 from packet import Packet
 from queuing_strategies import FCFSQueue, PriorityQueue, RoundRobinQueue
 
@@ -17,7 +18,7 @@ class PacketGenerator:
         Args:
             seed: Random seed for reproducibility
         """
-        random.seed(seed)
+        self.rng = random.Random(seed)
         self.packet_counter = 0
     
     def generate_packets(self, num_packets, arrival_rate=1.0, 
@@ -51,24 +52,24 @@ class PacketGenerator:
         
         for _ in range(num_packets):
             # Generate arrival time using exponential distribution (Poisson process)
-            inter_arrival = random.expovariate(arrival_rate)
+            inter_arrival = self.rng.expovariate(arrival_rate)
             current_time += inter_arrival
             
             # Select priority based on distribution
-            priority = random.choices(
+            priority = self.rng.choices(
                 list(priority_distribution.keys()),
                 weights=list(priority_distribution.values())
             )[0]
             
             # Select size based on distribution
-            size_range = random.choices(
+            size_range = self.rng.choices(
                 list(size_distribution.keys()),
                 weights=list(size_distribution.values())
             )[0]
-            size = random.randint(size_range[0], size_range[1])
+            size = self.rng.randint(size_range[0], size_range[1])
             
             # Generate service time
-            service_time = random.uniform(service_time_range[0], service_time_range[1])
+            service_time = self.rng.uniform(service_time_range[0], service_time_range[1])
             
             packet = Packet(
                 packet_id=self.packet_counter,
@@ -149,7 +150,6 @@ def run_experiment(packets, strategies):
     
     for strategy in strategies:
         # Create a deep copy of packets for each strategy
-        import copy
         packet_copies = [copy.copy(p) for p in packets]
         
         # Reset packet state

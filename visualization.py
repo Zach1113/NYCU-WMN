@@ -3,6 +3,7 @@ Visualization module for QoS simulation results.
 """
 
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 import numpy as np
 
 
@@ -19,8 +20,11 @@ def plot_comparison(results, metric='avg_latency', title=None, save_path=None):
     strategies = list(results.keys())
     values = [results[s][metric] for s in strategies]
     
+    # Generate colors dynamically based on number of strategies
+    colors = cm.get_cmap('tab10')(np.linspace(0, 0.3, len(strategies)))
+    
     plt.figure(figsize=(10, 6))
-    bars = plt.bar(strategies, values, color=['#3498db', '#e74c3c', '#2ecc71'])
+    bars = plt.bar(strategies, values, color=colors)
     plt.xlabel('Queuing Strategy', fontsize=12)
     plt.ylabel(metric.replace('_', ' ').title(), fontsize=12)
     
@@ -63,7 +67,8 @@ def plot_all_metrics(results, save_path=None):
                  fontsize=16, fontweight='bold')
     
     axes = axes.flatten()
-    colors = ['#3498db', '#e74c3c', '#2ecc71']
+    # Generate colors dynamically based on number of strategies
+    colors = cm.get_cmap('tab10')(np.linspace(0, 0.3, len(strategies)))
     
     for idx, (metric, label) in enumerate(zip(metrics, metric_labels)):
         values = [results[s][metric] for s in strategies]
@@ -107,6 +112,12 @@ def plot_latency_distribution(strategies_packets, save_path=None):
     for idx, (strategy_name, packets) in enumerate(strategies_packets.items()):
         latencies = [p.get_latency() for p in packets if p.get_latency() is not None]
         
+        if not latencies:
+            # Skip if no latency data
+            axes[idx].text(0.5, 0.5, 'No data', ha='center', va='center')
+            axes[idx].set_title(strategy_name, fontsize=11, fontweight='bold')
+            continue
+        
         axes[idx].hist(latencies, bins=20, color='skyblue', edgecolor='black', alpha=0.7)
         axes[idx].set_xlabel('Latency (s)', fontsize=10)
         axes[idx].set_ylabel('Frequency', fontsize=10)
@@ -146,8 +157,9 @@ def plot_priority_fairness(packets_by_priority, strategy_name, save_path=None):
         avg_latencies.append(np.mean(latencies) if latencies else 0)
     
     plt.figure(figsize=(10, 6))
-    bars = plt.bar([f'Priority {p}' for p in priorities], avg_latencies, 
-                   color=['#95a5a6', '#3498db', '#e74c3c'])
+    # Generate colors dynamically
+    colors = cm.get_cmap('viridis')(np.linspace(0.2, 0.8, len(priorities)))
+    bars = plt.bar([f'Priority {p}' for p in priorities], avg_latencies, color=colors)
     plt.xlabel('Priority Level', fontsize=12)
     plt.ylabel('Average Latency (s)', fontsize=12)
     plt.title(f'{strategy_name} - Fairness Analysis\n(Average Latency by Priority)', 
