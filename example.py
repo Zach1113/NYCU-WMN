@@ -8,7 +8,7 @@ This is a simple example showing how to:
 """
 
 from packet import Packet
-from queuing_strategies import FCFSQueue, PriorityQueue, RoundRobinQueue
+from queuing_strategies import FCFSQueue, PriorityQueue, RoundRobinQueue, FairQueue
 from simulation import PacketGenerator, run_experiment
 from visualization import print_results_table
 
@@ -33,9 +33,10 @@ def main():
     strategies = [
         FCFSQueue(),
         PriorityQueue(),
-        RoundRobinQueue(num_queues=3, time_quantum=0.5)
+        RoundRobinQueue(num_queues=3, time_quantum=0.5),
+        FairQueue()
     ]
-    print(f"   ✓ Created {len(strategies)} strategies: FCFS, Priority Queue, Round-Robin")
+    print(f"   ✓ Created {len(strategies)} strategies: FCFS, Priority Queue, Round-Robin, Fair Queue")
     
     # Step 3: Run experiment
     print("\n3. Running simulation...")

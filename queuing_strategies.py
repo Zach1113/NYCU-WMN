@@ -196,3 +196,123 @@ class RoundRobinQueue(QueueingStrategy):
     def is_empty(self):
         """Check if all queues are empty."""
         return all(len(q) == 0 for q in self.queues)
+
+
+class FairQueue(QueueingStrategy):
+    """
+    Fair Queueing (FQ) strategy.
+    
+    Maintains separate queues for different flows and uses virtual finish times
+    to approximate bit-by-bit round-robin scheduling. This ensures fairness
+    across flows regardless of packet sizes or arrival patterns.
+    """
+    
+    def __init__(self):
+        """Initialize Fair Queue."""
+        super().__init__("Fair Queue")
+        self.flow_queues = {}  # Dictionary: flow_id -> deque of packets
+        self.virtual_time = 0.0  # Virtual time for fairness calculation
+        self.flow_finish_times = {}  # Dictionary: flow_id -> virtual finish time
+    
+    def _get_flow_id(self, packet):
+        """
+        Determine flow ID for a packet.
+        In this simulation, we use priority as flow identifier.
+        In real networks, this would be based on source/dest IP and ports.
+        
+        Args:
+            packet: Packet to classify
+            
+        Returns:
+            Flow identifier
+        """
+        return packet.priority
+    
+    def add_packet(self, packet):
+        """
+        Add packet to its flow queue.
+        
+        Args:
+            packet: Packet to add
+        """
+        flow_id = self._get_flow_id(packet)
+        
+        # Create new flow queue if needed
+        if flow_id not in self.flow_queues:
+            self.flow_queues[flow_id] = deque()
+            self.flow_finish_times[flow_id] = 0.0
+        
+        self.flow_queues[flow_id].append(packet)
+    
+    def process_next(self):
+        """
+        Process next packet using Fair Queueing algorithm.
+        
+        Selects the packet with the smallest virtual finish time,
+        which approximates bit-by-bit round-robin fairness.
+        
+        Returns:
+            Processed packet or None if all queues empty
+        """
+        if not self.flow_queues:
+            return None
+        
+        # Remove empty flow queues
+        empty_flows = [fid for fid, q in self.flow_queues.items() if len(q) == 0]
+        for fid in empty_flows:
+            del self.flow_queues[fid]
+            if fid in self.flow_finish_times:
+                del self.flow_finish_times[fid]
+        
+        if not self.flow_queues:
+            return None
+        
+        # Find flow with minimum virtual finish time
+        min_flow_id = None
+        min_finish_time = float('inf')
+        
+        for flow_id, queue in self.flow_queues.items():
+            if len(queue) > 0:
+                # Calculate virtual finish time for the head packet
+                packet = queue[0]
+                
+                # Virtual start time is max of current virtual time and flow's last finish time
+                virtual_start = max(self.virtual_time, self.flow_finish_times[flow_id])
+                
+                # Virtual finish time = virtual start + packet size / link capacity
+                # We use service_time as a proxy for packet size / capacity
+                virtual_finish = virtual_start + packet.service_time
+                
+                if virtual_finish < min_finish_time:
+                    min_finish_time = virtual_finish
+                    min_flow_id = flow_id
+        
+        if min_flow_id is None:
+            return None
+        
+        # Dequeue packet from selected flow
+        packet = self.flow_queues[min_flow_id].popleft()
+        
+        # Update virtual time to the finish time of the packet being processed
+        virtual_start = max(self.virtual_time, self.flow_finish_times[min_flow_id])
+        virtual_finish = virtual_start + packet.service_time
+        
+        self.virtual_time = virtual_finish
+        self.flow_finish_times[min_flow_id] = virtual_finish
+        
+        # Process packet in real time
+        packet.set_start_time(self.current_time)
+        self.current_time += packet.service_time
+        packet.set_finish_time(self.current_time)
+        self.processed_packets.append(packet)
+        
+        return packet
+    
+    def is_empty(self):
+        """
+        Check if all flow queues are empty.
+        
+        Returns:
+            True if no packets in any flow queue
+        """
+        return all(len(q) == 0 for q in self.flow_queues.values()) if self.flow_queues else True

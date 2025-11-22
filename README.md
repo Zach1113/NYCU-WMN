@@ -4,15 +4,16 @@ A comprehensive implementation and experimental analysis of Quality of Service (
 
 ## Overview
 
-This project implements and compares three fundamental queuing strategies:
+This project implements and compares four fundamental queuing strategies:
 
 1. **First-Come, First-Served (FCFS)** - Processes packets in arrival order
 2. **Priority Queuing (PQ)** - Processes higher priority packets first
 3. **Round-Robin (RR)** - Distributes packets across multiple queues and serves them cyclically
+4. **Fair Queueing (FQ)** - Maintains per-flow queues with virtual finish times for fairness
 
 ## Features
 
-- **Complete Implementation**: Full Python implementation of three queuing strategies from scratch
+- **Complete Implementation**: Full Python implementation of four queuing strategies from scratch
 - **Packet Simulation**: Realistic packet generation with configurable properties (arrival time, priority, size, service time)
 - **Performance Metrics**: Measures latency, throughput, and fairness for each strategy
 - **Comprehensive Testing**: Multiple experimental scenarios including high traffic, priority stress tests, and variable service times
@@ -107,7 +108,7 @@ You can create custom experiments by using the provided modules:
 
 ```python
 from packet import Packet
-from queuing_strategies import FCFSQueue, PriorityQueue, RoundRobinQueue
+from queuing_strategies import FCFSQueue, PriorityQueue, RoundRobinQueue, FairQueue
 from simulation import PacketGenerator, Simulator, run_experiment
 from visualization import plot_all_metrics
 
@@ -123,7 +124,8 @@ packets = generator.generate_packets(
 strategies = [
     FCFSQueue(),
     PriorityQueue(),
-    RoundRobinQueue(num_queues=3)
+    RoundRobinQueue(num_queues=3),
+    FairQueue()
 ]
 
 # Run experiment and visualize
@@ -157,6 +159,7 @@ From the experimental results:
 - **FCFS**: Provides good fairness but cannot prioritize critical traffic
 - **Priority Queue**: Efficiently handles high-priority packets but may starve low-priority traffic
 - **Round-Robin**: Balances fairness similar to FCFS while distributing load across queues
+- **Fair Queue**: Provides excellent fairness across flows by using virtual finish times to approximate bit-by-bit round-robin
 
 ## Implementation Details
 
@@ -169,6 +172,7 @@ From the experimental results:
 - **FCFS**: Uses `collections.deque` for FIFO processing
 - **Priority Queue**: Uses `heapq` for priority-based processing
 - **Round-Robin**: Maintains multiple queues with cyclic scheduling
+- **Fair Queue**: Maintains per-flow queues with virtual finish time calculation for max-min fairness
 
 ### Simulation Framework
 - Generates packets with Poisson arrival process

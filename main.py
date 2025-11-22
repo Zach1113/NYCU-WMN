@@ -2,13 +2,13 @@
 Main simulation runner for QoS queuing strategies.
 
 This script runs comprehensive experiments comparing FCFS, Priority Queue,
-and Round-Robin queuing strategies under various traffic conditions.
+Round-Robin, and Fair Queueing strategies under various traffic conditions.
 """
 
 import os
 import copy
 from packet import Packet
-from queuing_strategies import FCFSQueue, PriorityQueue, RoundRobinQueue
+from queuing_strategies import FCFSQueue, PriorityQueue, RoundRobinQueue, FairQueue
 from simulation import PacketGenerator, Simulator, run_experiment
 from visualization import (plot_comparison, plot_all_metrics, 
                           plot_latency_distribution, plot_priority_fairness,
@@ -33,7 +33,8 @@ def run_basic_experiment():
     strategies = [
         FCFSQueue(),
         PriorityQueue(),
-        RoundRobinQueue(num_queues=3, time_quantum=0.5)
+        RoundRobinQueue(num_queues=3, time_quantum=0.5),
+        FairQueue()
     ]
     
     # Run experiment
@@ -66,7 +67,8 @@ def run_high_traffic_experiment():
     strategies = [
         FCFSQueue(),
         PriorityQueue(),
-        RoundRobinQueue(num_queues=3, time_quantum=0.5)
+        RoundRobinQueue(num_queues=3, time_quantum=0.5),
+        FairQueue()
     ]
     
     results = run_experiment(packets, strategies)
@@ -96,7 +98,8 @@ def run_priority_stress_test():
     strategies = [
         FCFSQueue(),
         PriorityQueue(),
-        RoundRobinQueue(num_queues=3, time_quantum=0.5)
+        RoundRobinQueue(num_queues=3, time_quantum=0.5),
+        FairQueue()
     ]
     
     results = run_experiment(packets, strategies)
@@ -142,7 +145,8 @@ def run_variable_service_time_experiment():
     strategies = [
         FCFSQueue(),
         PriorityQueue(),
-        RoundRobinQueue(num_queues=3, time_quantum=0.5)
+        RoundRobinQueue(num_queues=3, time_quantum=0.5),
+        FairQueue()
     ]
     
     results = run_experiment(packets, strategies)
@@ -171,7 +175,8 @@ def run_latency_distribution_analysis():
     strategies = [
         FCFSQueue(),
         PriorityQueue(),
-        RoundRobinQueue(num_queues=3, time_quantum=0.5)
+        RoundRobinQueue(num_queues=3, time_quantum=0.5),
+        FairQueue()
     ]
     
     # Run each strategy and collect processed packets
@@ -196,7 +201,7 @@ def main():
     """Run all experiments and generate comprehensive analysis."""
     print("\n" + "="*80)
     print("QoS QUEUING STRATEGIES SIMULATION")
-    print("Comparing FCFS, Priority Queue, and Round-Robin")
+    print("Comparing FCFS, Priority Queue, Round-Robin, and Fair Queue")
     print("="*80)
     
     # Create results directory

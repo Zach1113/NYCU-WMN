@@ -10,7 +10,7 @@ This script allows you to customize:
 
 import sys
 from packet import Packet
-from queuing_strategies import FCFSQueue, PriorityQueue, RoundRobinQueue
+from queuing_strategies import FCFSQueue, PriorityQueue, RoundRobinQueue, FairQueue
 from simulation import PacketGenerator, run_experiment
 from visualization import print_results_table, plot_all_metrics
 
@@ -57,7 +57,8 @@ def run_custom_simulation(num_packets=100, arrival_rate=2.0,
     strategies = [
         FCFSQueue(),
         PriorityQueue(),
-        RoundRobinQueue(num_queues=3, time_quantum=0.5)
+        RoundRobinQueue(num_queues=3, time_quantum=0.5),
+        FairQueue()
     ]
     
     # Run simulation

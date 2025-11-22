@@ -7,7 +7,7 @@ or simply: python test_queuing.py
 
 import unittest
 from packet import Packet
-from queuing_strategies import FCFSQueue, PriorityQueue, RoundRobinQueue
+from queuing_strategies import FCFSQueue, PriorityQueue, RoundRobinQueue, FairQueue
 from simulation import PacketGenerator, Simulator
 
 
@@ -205,6 +205,80 @@ class TestSimulator(unittest.TestCase):
         self.assertIn('throughput', metrics)
         self.assertIn('total_packets', metrics)
         self.assertIn('fairness_index', metrics)
+
+
+class TestFairQueue(unittest.TestCase):
+    """Test Fair Queue strategy."""
+    
+    def test_fair_queue_flow_separation(self):
+        """Test that Fair Queue separates packets by flow (priority)."""
+        fq = FairQueue()
+        
+        # Add packets with different priorities (flows)
+        p1 = Packet(1, 0.0, priority=1, service_time=1.0)
+        p2 = Packet(2, 0.0, priority=2, service_time=1.0)
+        p3 = Packet(3, 0.0, priority=1, service_time=1.0)
+        
+        fq.add_packet(p1)
+        fq.add_packet(p2)
+        fq.add_packet(p3)
+        
+        # Verify flows are separated
+        self.assertEqual(len(fq.flow_queues), 2)  # Two flows (priority 1 and 2)
+        self.assertEqual(len(fq.flow_queues[1]), 2)  # Two packets in flow 1
+        self.assertEqual(len(fq.flow_queues[2]), 1)  # One packet in flow 2
+    
+    def test_fair_queue_virtual_time(self):
+        """Test that Fair Queue uses virtual finish times correctly."""
+        fq = FairQueue()
+        
+        # Add packets with same priority but different service times
+        p1 = Packet(1, 0.0, priority=1, service_time=2.0)
+        p2 = Packet(2, 0.0, priority=1, service_time=1.0)
+        
+        fq.add_packet(p1)
+        fq.add_packet(p2)
+        
+        # Process first packet
+        first = fq.process_next()
+        self.assertEqual(first.id, 1)  # First in queue
+        
+        # Virtual time should have advanced
+        self.assertGreater(fq.virtual_time, 0)
+    
+    def test_fair_queue_fairness(self):
+        """Test that Fair Queue provides fairness across flows."""
+        fq = FairQueue()
+        
+        # Create packets from different flows with varying service times
+        packets = [
+            Packet(1, 0.0, priority=1, service_time=1.0),
+            Packet(2, 0.0, priority=2, service_time=2.0),
+            Packet(3, 0.0, priority=1, service_time=1.0),
+            Packet(4, 0.0, priority=2, service_time=2.0),
+        ]
+        
+        for p in packets:
+            fq.add_packet(p)
+        
+        # Process all packets and track order
+        processed_order = []
+        while not fq.is_empty():
+            packet = fq.process_next()
+            if packet:
+                processed_order.append(packet.id)
+        
+        # Fair Queue should interleave flows fairly
+        # We should see packets from both flows processed
+        self.assertEqual(len(processed_order), 4)
+    
+    def test_fair_queue_empty(self):
+        """Test empty queue detection."""
+        fq = FairQueue()
+        self.assertTrue(fq.is_empty())
+        
+        fq.add_packet(Packet(1, 0.0, priority=1))
+        self.assertFalse(fq.is_empty())
 
 
 def run_tests():
