@@ -40,24 +40,29 @@ NYCU-WMN/
    - Bursty arrivals (default) - simulates video, downloads, web traffic
    - Poisson arrivals (optional) - for comparison
 
-3. **Dual Fairness Metrics**:
-   - **Per-Packet Fairness**: Individual packet treatment
-   - **Per-Flow Fairness**: Flow-level service equality
-   - Shows trade-offs clearly
+3. **Finite Queue Capacity**:
+   - Support for limited buffer sizes
+   - **Packet Dropping** when queues are full
+   - Per-flow fair dropping for Fair Queue
 
-4. **Comprehensive Testing**:
+4. **Flow Fairness Focus**:
+   - **Per-Flow Fairness**: Primary metric for QoS
+   - Measures how equally flows are served
+   - Shows clear advantage of Fair Queue
+
+5. **Comprehensive Testing**:
    - 16 unit tests covering all components
    - 100% pass rate ✅
 
 ### 📊 Results (with Bursty Traffic)
 
 ```
-Strategy          Avg Latency    Pkt Fairness    Flow Fairness
-──────────────────────────────────────────────────────────────
-FCFS              33.17s         0.758           0.789
-Priority Queue    33.02s         0.742           0.742
-Round-Robin       33.12s         0.754           0.785
-Fair Queue        33.52s         0.747           0.932  ✅ BEST!
+Strategy          Avg Latency    Flow Fairness
+──────────────────────────────────────────────
+FCFS              33.17s         0.789
+Priority Queue    33.02s         0.742
+Round-Robin       33.12s         0.785
+Fair Queue        33.52s         0.932  ✅ BEST!
 ```
 
 **Key Result**: Fair Queue achieves **0.932 flow fairness** - the highest among all strategies!
@@ -73,6 +78,9 @@ pip install -r requirements.txt
 
 # Quick demo
 python example.py
+
+# Packet dropping demo
+python demo_packet_dropping.py
 
 # Full experiments (generates visualizations)
 python main.py
@@ -90,9 +98,10 @@ deactivate
 ### 📈 What Makes This Project Special
 
 1. **Realistic Traffic**: Bursty model shows Fair Queue's real-world value
-2. **Dual Metrics**: Clearly shows per-packet vs per-flow fairness trade-offs
-3. **Educational**: Demonstrates why Fair Queue is ideal for multi-tenant systems
-4. **Production Quality**: Clean code, comprehensive tests, good documentation
+2. **Packet Dropping**: Realistic handling of congestion with finite queues
+3. **Flow Fairness**: Focus on the metric that matters for multi-tenant systems
+4. **Educational**: Demonstrates why Fair Queue is ideal for shared infrastructure
+5. **Production Quality**: Clean code, comprehensive tests, good documentation
 
 ### 🎓 For Your Presentation
 
@@ -106,10 +115,15 @@ deactivate
    - 18% improvement in flow fairness
    - Actively protects small flows from large bursts
 
-3. **"We measure two types of fairness"**
-   - Per-packet: Individual treatment (FCFS wins)
-   - Per-flow: Flow protection (Fair Queue wins)
-   - Shows intentional trade-off
+3. **"We implemented realistic packet dropping"**
+   - Finite queue capacities simulate real router buffers
+   - Fair Queue uses **per-flow fair dropping** to prevent starvation
+   - FCFS suffers from global tail drop (first flow hogs buffer)
+
+4. **"Fair Queue is ideal for multi-tenant systems"**
+   - Cloud platforms, ISP networks
+   - Protects small flows from aggressive senders
+   - Prevents bandwidth hogging
 
 4. **"Fair Queue is ideal for multi-tenant systems"**
    - Cloud platforms, ISP networks

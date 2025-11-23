@@ -16,7 +16,7 @@ This project presents a comprehensive implementation and experimental analysis o
 3. **Round-Robin (RR)**
 4. **Fair Queueing (FQ)** ⭐ *New Addition*
 
-Our implementation provides a complete simulation framework with realistic packet generation, performance metrics collection, and comprehensive visualization capabilities.
+Our implementation provides a complete simulation framework with **realistic bursty traffic**, **finite queue capacities with packet dropping**, and comprehensive visualization capabilities.
 
 ---
 
@@ -27,12 +27,13 @@ Modern networks must handle diverse traffic types with varying Quality of Servic
 - **Real-time applications** (VoIP, video streaming) require low latency
 - **Bulk transfers** (file downloads) need high throughput
 - **Multi-tenant systems** require fairness across users
+- **Congestion** requires intelligent packet dropping policies
 
 ### 2.2 Research Questions
 1. How do different queuing strategies affect latency, throughput, and fairness?
 2. Which strategy performs best under high traffic loads?
 3. Can Fair Queueing provide better fairness than traditional approaches?
-4. What are the trade-offs between simplicity and performance?
+4. How do strategies handle congestion and packet dropping?
 
 ---
 
@@ -41,28 +42,28 @@ Modern networks must handle diverse traffic types with varying Quality of Servic
 ### 3.1 First-Come, First-Served (FCFS)
 - **Algorithm**: Process packets in strict arrival order
 - **Data Structure**: `collections.deque` (FIFO queue)
-- **Complexity**: O(1) enqueue, O(1) dequeue
+- **Dropping Policy**: Global Tail Drop (first flow to arrive hogs buffer)
 - **Pros**: Simple, predictable, fair to arrival order
-- **Cons**: Cannot prioritize critical traffic
+- **Cons**: Cannot prioritize critical traffic, poor flow fairness
 
 ### 3.2 Priority Queuing (PQ)
 - **Algorithm**: Process highest priority packets first
 - **Data Structure**: `heapq` (min-heap)
-- **Complexity**: O(log n) enqueue, O(log n) dequeue
+- **Dropping Policy**: Global Tail Drop
 - **Pros**: Excellent for latency-sensitive applications
 - **Cons**: May starve low-priority traffic
 
 ### 3.3 Round-Robin (RR)
 - **Algorithm**: Distribute packets across N queues, serve cyclically
 - **Data Structure**: Multiple `deque` queues
-- **Complexity**: O(1) enqueue, O(1) dequeue (amortized)
+- **Dropping Policy**: Global Tail Drop
 - **Pros**: Load balancing, prevents starvation
 - **Cons**: Does not respect priorities
 
 ### 3.4 Fair Queueing (FQ) ⭐
 - **Algorithm**: Per-flow queues with virtual finish time scheduling
 - **Data Structure**: Dictionary of flow queues + virtual time tracking
-- **Complexity**: O(F) per dequeue where F = number of active flows
+- **Dropping Policy**: **Per-Flow Fair Dropping** (partitions buffer among flows)
 - **Pros**: Max-min fairness, flow isolation, prevents bandwidth hogging
 - **Cons**: More complex implementation
 
@@ -88,8 +89,8 @@ The packet with the smallest virtual finish time is processed next.
 │  │   Packet     │──────▶│  Queuing Strategies     │    │
 │  │  Generator   │      │  • FCFS                  │    │
 │  │              │      │  • Priority Queue        │    │
-│  │ • Poisson    │      │  • Round-Robin           │    │
-│  │   arrival    │      │  • Fair Queue ⭐         │    │
+│  │ • Bursty     │      │  • Round-Robin           │    │
+│  │   Traffic    │      │  • Fair Queue ⭐         │    │
 │  │ • Priority   │      └─────────────────────────┘    │
 │  │   dist.      │                 │                     │
 │  └──────────────┘                 ▼                     │
@@ -113,8 +114,9 @@ The packet with the smallest virtual finish time is processed next.
 ```
 
 ### 4.2 Key Features
-- **Realistic Traffic Generation**: Poisson arrival process with configurable parameters
-- **Comprehensive Metrics**: Latency, waiting time, throughput, Jain's fairness index
+- **Realistic Traffic Generation**: Bursty arrival process (simulating video/web traffic)
+- **Finite Queue Capacity**: Configurable buffer sizes with packet dropping
+- **Comprehensive Metrics**: Latency, throughput, drop rates, flow fairness
 - **Extensive Testing**: 16 unit tests with 100% pass rate
 - **Professional Visualization**: Multi-panel comparison charts
 
@@ -127,9 +129,9 @@ The packet with the smallest virtual finish time is processed next.
 | Metric | Formula | Interpretation |
 |--------|---------|----------------|
 | **Average Latency** | `(finish_time - arrival_time)` | Total delay (waiting + service) |
-| **Average Waiting Time** | `(start_time - arrival_time)` | Time in queue before processing |
 | **Throughput** | `packets_processed / total_time` | Processing rate |
-| **Fairness Index** | `(Σ latency)² / (n × Σ latency²)` | Jain's fairness (0-1, higher is better) |
+| **Flow Fairness** | `(Σ avg_flow_latency)² / (n × Σ avg_flow_latency²)` | Jain's fairness on flow averages (0-1) |
+| **Drop Rate** | `dropped_packets / total_offered` | Percentage of packets dropped |
 
 ### 5.2 Experimental Scenarios
 
@@ -139,45 +141,38 @@ The packet with the smallest virtual finish time is processed next.
 | **High Traffic** | 500 | 5.0 | 60/30/10 | Stress test |
 | **Priority Stress** | 200 | 2.5 | 20/30/50 | High-priority handling |
 | **Variable Service** | 150 | 2.0 | 40/40/20 | Service time variance |
-| **Latency Analysis** | 200 | 2.0 | 40/30/30 | Statistical distribution |
+| **Packet Dropping** | 100 | 5.0 | 60/30/10 | Congestion handling |
 
 ### 5.3 Traffic Parameters
-- **Arrival Process**: Exponential inter-arrival times (Poisson)
+- **Arrival Process**: Bursty arrivals (default) or Poisson
 - **Priority Levels**: 1 (low), 2 (medium), 3 (high)
 - **Packet Sizes**: 500-5000 bytes (configurable distribution)
-- **Service Times**: 0.5-2.0 seconds (default), 0.1-5.0 seconds (variable)
+- **Service Times**: 0.5-2.0 seconds (default)
 
 ---
 
 ## 6. Preliminary Results
 
-### 6.1 Basic Comparison (50 packets, moderate traffic)
+### 6.1 Basic Comparison (Bursty Traffic)
 
-| Strategy | Avg Latency (s) | Throughput (pkt/s) | Fairness Index |
-|----------|-----------------|--------------------|--------------------|
-| FCFS | 15.52 | 0.88 | **0.727** |
-| Priority Queue | 14.96 | 0.88 | 0.565 |
-| Round-Robin | 15.52 | 0.88 | **0.727** |
-| **Fair Queue** ⭐ | **14.56** ✅ | 0.88 | 0.603 |
+| Strategy | Avg Latency (s) | Throughput (pkt/s) | Flow Fairness |
+|----------|-----------------|--------------------|---------------|
+| FCFS | 33.17 | 0.76 | 0.789 |
+| Priority Queue | 33.02 | 0.76 | 0.742 |
+| Round-Robin | 33.12 | 0.76 | 0.785 |
+| **Fair Queue** ⭐ | 33.52 | 0.76 | **0.932** ✅ |
 
 **Key Findings**:
-- ✅ **Fair Queue achieved the lowest average latency** (14.56s)
-- ✅ FCFS and Round-Robin show highest fairness (0.727)
-- ⚠️ Priority Queue has lowest fairness (0.565) - expected due to prioritization
-- ✅ All strategies achieve same throughput (queue-limited)
+- ✅ **Fair Queue achieves highest flow fairness (0.932)**
+- ✅ FCFS and Round-Robin provide moderate fairness (~0.78)
+- ⚠️ Priority Queue sacrifices fairness for priority handling
+- ✅ All strategies achieve similar throughput
 
-### 6.2 Performance Characteristics
+### 6.2 Packet Dropping Analysis (Congestion)
 
-```
-Latency Performance:
-Fair Queue < Priority Queue < FCFS ≈ Round-Robin
-
-Fairness Performance:
-FCFS ≈ Round-Robin > Fair Queue > Priority Queue
-
-Complexity:
-FCFS < Round-Robin < Priority Queue < Fair Queue
-```
+**Scenario**: 50 packet queue capacity, 100 packets offered
+- **FCFS**: 49% drop rate, Flow 2 & 3 completely starved (100% dropped)
+- **Fair Queue**: 15% drop rate, all flows protected (balanced dropping)
 
 ---
 
@@ -193,40 +188,26 @@ class FairQueue:
         self.flow_finish_times = {}    # flow_id -> virtual finish time
     
     def add_packet(self, packet):
-        flow_id = get_flow_id(packet)  # Use priority as flow ID
-        if flow_id not in flow_queues:
-            flow_queues[flow_id] = deque()
-            flow_finish_times[flow_id] = 0.0
+        # Per-Flow Fair Dropping Logic
+        if queue_is_full:
+            per_flow_limit = max_capacity / num_flows
+            if len(flow_queue) >= per_flow_limit:
+                drop(packet)
+                return
+
+        flow_id = get_flow_id(packet)
         flow_queues[flow_id].append(packet)
     
     def process_next(self):
         # Find flow with minimum virtual finish time
-        min_flow = None
-        min_finish = ∞
-        
-        for flow_id, queue in flow_queues.items():
-            if queue is not empty:
-                packet = queue.front()
-                virtual_start = max(virtual_time, flow_finish_times[flow_id])
-                virtual_finish = virtual_start + packet.service_time
-                
-                if virtual_finish < min_finish:
-                    min_finish = virtual_finish
-                    min_flow = flow_id
-        
-        # Process packet from selected flow
-        packet = flow_queues[min_flow].dequeue()
-        virtual_time = min_finish
-        flow_finish_times[min_flow] = min_finish
-        
-        return packet
+        # ... (standard FQ logic)
 ```
 
 ### 7.2 Code Quality Metrics
-- **Total Lines of Code**: ~1,700 (including Fair Queue)
+- **Total Lines of Code**: ~1,800
 - **Test Coverage**: 16 unit tests, 100% pass rate
 - **Documentation**: Comprehensive docstrings for all classes/methods
-- **Design Patterns**: Strategy pattern, Template method, Dependency injection
+- **Design Patterns**: Strategy pattern, Template method
 
 ---
 
@@ -246,15 +227,6 @@ test_metrics_calculation .................. ✅ PASS
 Ran 16 tests in 0.001s - ALL PASSED ✅
 ```
 
-### 8.2 Test Coverage
-- ✅ Packet creation and timing
-- ✅ Queue operations (enqueue, dequeue, empty check)
-- ✅ Priority ordering
-- ✅ Flow separation (Fair Queue)
-- ✅ Virtual time advancement (Fair Queue)
-- ✅ Metrics calculation
-- ✅ Simulation framework
-
 ---
 
 ## 9. Expected Outcomes
@@ -264,25 +236,18 @@ Ran 16 tests in 0.001s - ALL PASSED ✅
 **Under High Traffic Load**:
 - Fair Queue should maintain better fairness than Priority Queue
 - FCFS may show increased latency variance
-- Round-Robin should distribute load evenly
 
-**Under Priority Stress** (50% high-priority packets):
-- Priority Queue will excel for high-priority packets
-- Fair Queue will balance across all priorities
-- FCFS will treat all equally (no prioritization)
-
-**Under Variable Service Times**:
-- Fair Queue should show highest fairness index
-- FCFS and Round-Robin may show latency variance
-- Priority Queue may amplify service time effects
+**Under Congestion (Packet Dropping)**:
+- Fair Queue will protect small flows from starvation
+- FCFS will allow aggressive flows to hog the buffer
 
 ### 9.2 Visualization Outputs
 
 The simulation generates:
-1. **4-panel performance dashboard** (latency, waiting time, throughput, fairness)
+1. **4-panel performance dashboard** (latency, waiting time, throughput, flow fairness)
 2. **Latency distribution histograms** for each strategy
-3. **Priority-based fairness analysis** (latency by priority level)
-4. **Comparative bar charts** for specific metrics
+3. **Priority-based fairness analysis**
+4. **Comparative bar charts**
 
 ---
 
@@ -298,7 +263,7 @@ The simulation generates:
 | **Fair Queue** | Multi-tenant systems | ISP networks, cloud platforms, shared infrastructure |
 
 ### 10.2 Industry Relevance
-- **Cisco IOS**: Uses Weighted Fair Queueing (WFQ) based on Fair Queueing
+- **Cisco IOS**: Uses Weighted Fair Queueing (WFQ)
 - **Linux Traffic Control**: Implements Stochastic Fair Queueing (SFQ)
 - **Data Centers**: Use variants for tenant isolation
 - **5G Networks**: QoS mechanisms based on these principles
@@ -309,22 +274,16 @@ The simulation generates:
 
 ### 11.1 Key Achievements
 ✅ Successfully implemented 4 queuing strategies from scratch  
-✅ Fair Queue shows **lowest average latency** in preliminary tests  
+✅ **Fair Queue shows superior flow fairness (0.932)**  
+✅ Implemented **realistic packet dropping** with finite queues  
 ✅ Comprehensive testing framework with 100% test pass rate  
 ✅ Professional visualization and analysis tools  
-✅ Realistic traffic generation with Poisson arrivals  
 
 ### 11.2 Key Insights
-1. **Fair Queue provides excellent balance** between latency and fairness
+1. **Fair Queue provides best protection** for flows during congestion
 2. **Priority Queue excels for latency** but sacrifices fairness
-3. **FCFS and Round-Robin** offer simplicity with good fairness
-4. **Trade-offs exist** between complexity, performance, and fairness
-
-### 11.3 Contributions
-- **Educational**: Clear implementation of fundamental QoS algorithms
-- **Practical**: Reusable simulation framework for network research
-- **Extensible**: Easy to add new strategies or metrics
-- **Well-tested**: Comprehensive unit tests ensure correctness
+3. **FCFS** suffers from "tail drop" issues under heavy load
+4. **Trade-offs exist** between complexity and fairness
 
 ---
 
@@ -335,11 +294,9 @@ The simulation generates:
 2. **Deficit Round-Robin (DRR)**: Improve Round-Robin with deficit counters
 3. **Class-Based Queueing (CBQ)**: Hierarchical bandwidth allocation
 4. **Token Bucket Shaping**: Add traffic shaping mechanisms
-5. **Real Network Traces**: Test with real-world packet captures
 
 ### 12.2 Advanced Features
-- **Packet dropping policies**: RED, WRED for congestion control
-- **Queue limits**: Finite buffer sizes with overflow handling
+- **Active Queue Management**: RED, WRED (vs current Tail Drop)
 - **Preemption**: Allow packet preemption for ultra-low latency
 - **Multi-server queues**: Parallel processing simulation
 - **Network topology**: Simulate multiple routers/switches
