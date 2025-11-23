@@ -1,10 +1,6 @@
 # QoS Queuing Strategies: A Comparative Analysis
 ## Fair Queueing Implementation and Performance Evaluation
 
-**Course**: NYCU Wireless and Mobile Networks  
-**Author**: Zach1113  
-**Date**: November 2025
-
 ---
 
 ## 1. Executive Summary
@@ -135,7 +131,7 @@ We evaluate each strategy using four key quantitative### 6.1 Metrics Definition
 | FCFS | 33.17 | 0.76 | 0.789 |
 | Priority Queue | 33.02 | 0.76 | 0.742 |
 | Round-Robin | 33.12 | 0.76 | 0.785 |
-| **Fair Queue** ⭐ | 33.52 | 0.76 | **0.932** ✅ |
+| **Fair Queue**  | 33.52 | 0.76 | **0.932**  |
 | **LAS Queue** | 33.52 | 0.76 | **0.932** |
 
 **Key Findings**:
