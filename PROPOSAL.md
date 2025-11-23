@@ -20,134 +20,73 @@ Our implementation provides a complete simulation framework with **realistic bur
 
 ---
 
-## 2. Motivation
+## 2. Problem Statement & Research Goals
 
-### 2.1 Problem Statement
-Modern networks must handle diverse traffic types with varying Quality of Service requirements:
-- **Real-time applications** (VoIP, video streaming) require low latency
-- **Bulk transfers** (file downloads) need high throughput
-- **Multi-tenant systems** require fairness across users
-- **Congestion** requires intelligent packet dropping policies
+### 2.1 Problems to be Explored
+This project addresses critical challenges in network packet scheduling:
+
+1.  **Latency vs. Fairness Trade-off**: How to balance low latency for real-time apps while ensuring fair bandwidth for all users.
+2.  **Congestion Management**: How different strategies handle buffer overflows (packet dropping) during high traffic bursts.
+3.  **Flow Starvation**: Investigating how aggressive flows (large file downloads) can starve small, interactive flows in shared networks.
+4.  **Multi-Tenant Isolation**: Evaluating which strategy best isolates users in a shared infrastructure (e.g., cloud/ISP networks).
 
 ### 2.2 Research Questions
-1. How do different queuing strategies affect latency, throughput, and fairness?
-2. Which strategy performs best under high traffic loads?
-3. Can Fair Queueing provide better fairness than traditional approaches?
-4. How do strategies handle congestion and packet dropping?
+1.  Which queuing strategy minimizes latency for critical traffic without starving others?
+2.  Can **Fair Queueing** effectively protect small flows during severe congestion?
+3.  How does **Finite Queue Capacity** impact the performance of FCFS vs. Fair Queue?
 
 ---
 
-## 3. Queuing Strategies Overview
+## 3. Tools & Technologies
 
-### 3.1 First-Come, First-Served (FCFS)
-- **Algorithm**: Process packets in strict arrival order
-- **Data Structure**: `collections.deque` (FIFO queue)
-- **Dropping Policy**: Global Tail Drop (first flow to arrive hogs buffer)
-- **Pros**: Simple, predictable, fair to arrival order
-- **Cons**: Cannot prioritize critical traffic, poor flow fairness
+We utilize a custom-built Python simulation framework to ensure complete control over the scheduling logic.
 
-### 3.2 Priority Queuing (PQ)
-- **Algorithm**: Process highest priority packets first
-- **Data Structure**: `heapq` (min-heap)
-- **Dropping Policy**: Global Tail Drop
-- **Pros**: Excellent for latency-sensitive applications
-- **Cons**: May starve low-priority traffic
-
-### 3.3 Round-Robin (RR)
-- **Algorithm**: Distribute packets across N queues, serve cyclically
-- **Data Structure**: Multiple `deque` queues
-- **Dropping Policy**: Global Tail Drop
-- **Pros**: Load balancing, prevents starvation
-- **Cons**: Does not respect priorities
-
-### 3.4 Fair Queueing (FQ) ⭐
-- **Algorithm**: Per-flow queues with virtual finish time scheduling
-- **Data Structure**: Dictionary of flow queues + virtual time tracking
-- **Dropping Policy**: **Per-Flow Fair Dropping** (partitions buffer among flows)
-- **Pros**: Max-min fairness, flow isolation, prevents bandwidth hogging
-- **Cons**: More complex implementation
-
-**Key Innovation**: Fair Queueing uses virtual finish times to approximate bit-by-bit round-robin:
-```
-virtual_start = max(current_virtual_time, flow_last_finish_time)
-virtual_finish = virtual_start + service_time
-```
-The packet with the smallest virtual finish time is processed next.
+| Category | Tool/Library | Purpose |
+|----------|--------------|---------|
+| **Language** | **Python 3.9+** | Core logic implementation (high readability, rapid prototyping) |
+| **Simulation** | **Custom Event-Driven Engine** | Simulates packet arrivals, queuing, processing, and dropping |
+| **Data Structure** | `collections.deque`, `heapq` | Efficient implementation of FIFO, Priority, and Fair queues |
+| **Visualization** | **Matplotlib** | Generating comparative charts, histograms, and fairness plots |
+| **Testing** | **unittest** | Verifying algorithmic correctness (16 automated tests) |
 
 ---
 
-## 4. Implementation Architecture
+## 4. Methodology & Validation
 
-### 4.1 System Components
+### 4.1 Simulation Methodology
+Our approach uses discrete-event simulation to model network behavior:
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                   Simulation Framework                   │
-├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  ┌──────────────┐      ┌─────────────────────────┐    │
-│  │   Packet     │──────▶│  Queuing Strategies     │    │
-│  │  Generator   │      │  • FCFS                  │    │
-│  │              │      │  • Priority Queue        │    │
-│  │ • Bursty     │      │  • Round-Robin           │    │
-│  │   Traffic    │      │  • Fair Queue ⭐         │    │
-│  │ • Priority   │      └─────────────────────────┘    │
-│  │   dist.      │                 │                     │
-│  └──────────────┘                 ▼                     │
-│                          ┌──────────────┐               │
-│                          │  Simulator   │               │
-│                          │              │               │
-│                          │ • Event-     │               │
-│                          │   driven     │               │
-│                          │ • Metrics    │               │
-│                          └──────────────┘               │
-│                                 │                        │
-│                                 ▼                        │
-│                       ┌──────────────────┐              │
-│                       │  Visualization   │              │
-│                       │                  │              │
-│                       │ • Matplotlib     │              │
-│                       │ • Comparisons    │              │
-│                       │ • Distributions  │              │
-│                       └──────────────────┘              │
-└─────────────────────────────────────────────────────────┘
-```
+1.  **Traffic Generation**:
+    *   **Bursty Model**: Simulates real-world traffic (web browsing, video) where packets arrive in clusters.
+    *   **Poisson Process**: Used as a baseline for random arrivals.
+2.  **Queue Simulation**:
+    *   Packets are processed by the selected strategy (FCFS, PQ, RR, FQ).
+    *   **Finite Buffers**: If the queue is full, the **Dropping Policy** is triggered.
+3.  **Data Collection**:
+    *   Every packet tracks its `arrival_time`, `start_time`, and `finish_time`.
+    *   Dropped packets are recorded for loss analysis.
 
-### 4.2 Key Features
-- **Realistic Traffic Generation**: Bursty arrival process (simulating video/web traffic)
-- **Finite Queue Capacity**: Configurable buffer sizes with packet dropping
-- **Comprehensive Metrics**: Latency, throughput, drop rates, flow fairness
-- **Extensive Testing**: 16 unit tests with 100% pass rate
-- **Professional Visualization**: Multi-panel comparison charts
+### 4.2 Validation Strategy
+To ensure the accuracy of our results, we employ a rigorous validation process:
+
+*   **Unit Testing**: 16 automated tests verify the logic of each strategy (e.g., ensuring Priority Queue actually serves high-priority first).
+*   **Theoretical Verification**: Comparing simulation results with Queuing Theory expectations (e.g., Little's Law).
+*   **Extreme Case Testing**:
+    *   **Saturation**: Pushing arrival rate > service rate to test stability.
+    *   **Starvation**: Sending 90% high-priority traffic to check low-priority handling.
 
 ---
 
-## 5. Experimental Design
+## 5. Performance Metrics
 
-### 5.1 Performance Metrics
+We evaluate each strategy using four key quantitative indicators:
 
-| Metric | Formula | Interpretation |
-|--------|---------|----------------|
-| **Average Latency** | `(finish_time - arrival_time)` | Total delay (waiting + service) |
-| **Throughput** | `packets_processed / total_time` | Processing rate |
-| **Flow Fairness** | `(Σ avg_flow_latency)² / (n × Σ avg_flow_latency²)` | Jain's fairness on flow averages (0-1) |
-| **Drop Rate** | `dropped_packets / total_offered` | Percentage of packets dropped |
-
-### 5.2 Experimental Scenarios
-
-| Experiment | Packets | Arrival Rate | Priority Dist. | Focus |
-|------------|---------|--------------|----------------|-------|
-| **Basic Comparison** | 100 | 2.0 | 50/30/20 | General performance |
-| **High Traffic** | 500 | 5.0 | 60/30/10 | Stress test |
-| **Priority Stress** | 200 | 2.5 | 20/30/50 | High-priority handling |
-| **Variable Service** | 150 | 2.0 | 40/40/20 | Service time variance |
-| **Packet Dropping** | 100 | 5.0 | 60/30/10 | Congestion handling |
-
-### 5.3 Traffic Parameters
-- **Arrival Process**: Bursty arrivals (default) or Poisson
-- **Priority Levels**: 1 (low), 2 (medium), 3 (high)
-- **Packet Sizes**: 500-5000 bytes (configurable distribution)
-- **Service Times**: 0.5-2.0 seconds (default)
+| Metric | Definition | Why it matters? |
+|--------|------------|-----------------|
+| **1. Average Latency** | $T_{finish} - T_{arrival}$ | Critical for real-time apps (VoIP, Gaming). Lower is better. |
+| **2. Throughput** | $\frac{Packets_{processed}}{Total\_Time}$ | Measures system efficiency and capacity. Higher is better. |
+| **3. Flow Fairness** | Jain's Index: $\frac{(\sum x_i)^2}{n \sum x_i^2}$ | **Crucial for multi-tenant systems.** Measures if all flows get equal service (0-1). |
+| **4. Drop Rate** | $\frac{Packets_{dropped}}{Packets_{total}}$ | Indicates reliability during congestion. Lower is better. |
 
 ---
 
