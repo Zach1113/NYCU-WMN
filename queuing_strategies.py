@@ -355,3 +355,101 @@ class FairQueue(QueueingStrategy):
     def get_queue_size(self):
         """Get total queue size across all flows."""
         return sum(len(q) for q in self.flow_queues.values())
+
+
+class LASQueue(QueueingStrategy):
+    """
+    Least Attained Service (LAS) Queuing Strategy.
+    
+    Also known as Shortest Flow First.
+    
+    Algorithm:
+    - Tracks total service time received by each flow.
+    - Always serves the packet from the flow with the LEAST total service.
+    - New flows (0 service) get highest priority.
+    
+    Pros:
+    - Minimizes average latency (proven optimal for this).
+    - Extremely fair to small flows ("mice").
+    
+    Cons:
+    - Can starve large flows ("elephants") if many small flows arrive.
+    """
+    
+    def __init__(self, name="LAS Queue", max_queue_size=None):
+        super().__init__(name, max_queue_size)
+        self.flow_queues = {}        # flow_id -> deque of packets
+        self.flow_service_received = {}  # flow_id -> total service time
+    
+    def _get_flow_id(self, packet):
+        """Use packet priority as flow ID for this simulation."""
+        return packet.priority
+    
+    def add_packet(self, packet):
+        """Add packet to its flow queue."""
+        # Check drop policy
+        if self.max_queue_size is not None:
+            total_size = sum(len(q) for q in self.flow_queues.values())
+            if total_size >= self.max_queue_size:
+                # LAS Drop Policy: Drop from the flow with MOST service received
+                # This is "Fair Dropping" for LAS
+                max_service_flow = max(self.flow_service_received.items(), 
+                                     key=lambda x: x[1] if self.flow_queues.get(x[0]) else -1)[0]
+                
+                if self.flow_queues.get(max_service_flow):
+                    # Drop from the "elephant" flow to make room
+                    dropped = self.flow_queues[max_service_flow].pop() # Drop tail of elephant
+                    self.dropped_packets.append(dropped)
+                else:
+                    # Fallback to tail drop if logic fails
+                    self.dropped_packets.append(packet)
+                    return
+        
+        flow_id = self._get_flow_id(packet)
+        
+        if flow_id not in self.flow_queues:
+            self.flow_queues[flow_id] = deque()
+            self.flow_service_received[flow_id] = 0.0
+            
+        self.flow_queues[flow_id].append(packet)
+    
+    def process_next(self):
+        """Process packet from flow with LEAST attained service."""
+        # Find active flow with minimum service received
+        min_service = float('inf')
+        target_flow = None
+        
+        for flow_id, queue in self.flow_queues.items():
+            if queue:  # If flow has packets waiting
+                service = self.flow_service_received[flow_id]
+                if service < min_service:
+                    min_service = service
+                    target_flow = flow_id
+        
+        if target_flow is not None:
+            packet = self.flow_queues[target_flow].popleft()
+            
+            # Update service received
+            self.flow_service_received[target_flow] += packet.service_time
+            
+            # Process packet in real time
+            packet.set_start_time(self.current_time)
+            self.current_time += packet.service_time
+            packet.set_finish_time(self.current_time)
+            self.processed_packets.append(packet)
+            return packet
+            
+        return None
+    
+    def is_empty(self):
+        """
+        Check if all flow queues are empty.
+        
+        Returns:
+            True if no packets in any flow queue
+        """
+        return all(len(q) == 0 for q in self.flow_queues.values()) if self.flow_queues else True
+    
+    def get_queue_size(self):
+        """Return total number of packets in all queues."""
+        return sum(len(q) for q in self.flow_queues.values())

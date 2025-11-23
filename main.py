@@ -8,7 +8,7 @@ Round-Robin, and Fair Queueing strategies under various traffic conditions.
 import os
 import copy
 from packet import Packet
-from queuing_strategies import FCFSQueue, PriorityQueue, RoundRobinQueue, FairQueue
+from queuing_strategies import FCFSQueue, PriorityQueue, RoundRobinQueue, FairQueue, LASQueue
 from simulation import PacketGenerator, Simulator, run_experiment
 from visualization import (plot_comparison, plot_all_metrics, 
                           plot_latency_distribution, plot_priority_fairness,
@@ -34,7 +34,8 @@ def run_basic_experiment():
         FCFSQueue(),
         PriorityQueue(),
         RoundRobinQueue(num_queues=3, time_quantum=0.5),
-        FairQueue()
+        FairQueue(),
+        LASQueue()
     ]
     
     # Run experiment
@@ -68,7 +69,8 @@ def run_high_traffic_experiment():
         FCFSQueue(),
         PriorityQueue(),
         RoundRobinQueue(num_queues=3, time_quantum=0.5),
-        FairQueue()
+        FairQueue(),
+        LASQueue()
     ]
     
     results = run_experiment(packets, strategies)
@@ -99,7 +101,8 @@ def run_priority_stress_test():
         FCFSQueue(),
         PriorityQueue(),
         RoundRobinQueue(num_queues=3, time_quantum=0.5),
-        FairQueue()
+        FairQueue(),
+        LASQueue()
     ]
     
     results = run_experiment(packets, strategies)
@@ -146,7 +149,8 @@ def run_variable_service_time_experiment():
         FCFSQueue(),
         PriorityQueue(),
         RoundRobinQueue(num_queues=3, time_quantum=0.5),
-        FairQueue()
+        FairQueue(),
+        LASQueue()
     ]
     
     results = run_experiment(packets, strategies)
@@ -176,7 +180,8 @@ def run_latency_distribution_analysis():
         FCFSQueue(),
         PriorityQueue(),
         RoundRobinQueue(num_queues=3, time_quantum=0.5),
-        FairQueue()
+        FairQueue(),
+        LASQueue()
     ]
     
     # Run each strategy and collect processed packets
