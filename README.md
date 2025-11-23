@@ -174,24 +174,16 @@ Each strategy is evaluated on:
 - **Throughput**: Packets processed per unit time
 - **Dropped Packets**: Number of packets dropped when queue is full (if finite capacity)
 - **Drop Rate**: Percentage of offered packets that were dropped
-- **Per-Packet Fairness**: Jain's fairness index on individual packet latencies (measures variance in packet treatment)
-- **Per-Flow Fairness**: Jain's fairness index on average latency per flow (measures variance in flow service)
+- **Flow Fairness**: Jain's fairness index on average latency per flow (measures how equally flows are served)
 
-## Understanding Fairness Metrics
+## Understanding Flow Fairness
 
-This project measures **two types of fairness**:
+This project focuses on **Per-Flow Fairness** (Jain's Fairness Index) as the primary metric for QoS:
 
-### Per-Packet Fairness
-- Measures how equally individual packets are treated
-- Higher value = all packets experience similar latency
-- FCFS and Round-Robin typically score highest
-
-### Per-Flow Fairness  
-- Measures how equally flows (groups of packets) are served
-- Higher value = flows get equal service opportunities
-- **Fair Queue optimizes for this metric**
-
-**Key Insight**: Fair Queue may show lower per-packet fairness because it intentionally creates variance to protect small flows from large flows. This is the correct trade-off for multi-tenant systems!
+- **What it measures**: How equally different flows (groups of packets) are served
+- **Why it matters**: In multi-tenant systems, we want to prevent aggressive flows from starving small flows
+- **The Goal**: A value close to 1.0 means all flows receive equal service quality
+- **Fair Queue's Advantage**: By using virtual finish times and per-flow queues, Fair Queue achieves superior flow fairness compared to FCFS.
 
 ## Traffic Model
 

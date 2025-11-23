@@ -79,10 +79,10 @@ def run_custom_simulation(num_packets=100, arrival_rate=2.0,
     print("="*80)
     
     best_latency = min(results.items(), key=lambda x: x[1]['avg_latency'])
-    best_fairness = max(results.items(), key=lambda x: x[1]['fairness_index'])
+    best_fairness = max(results.items(), key=lambda x: x[1]['flow_fairness_index'])
     
     print(f"\n• Best Average Latency: {best_latency[0]} ({best_latency[1]['avg_latency']:.2f}s)")
-    print(f"• Best Fairness: {best_fairness[0]} ({best_fairness[1]['fairness_index']:.3f})")
+    print(f"• Best Flow Fairness: {best_fairness[0]} ({best_fairness[1]['flow_fairness_index']:.3f})")
     
     if high_priority_ratio > 0.3:
         print("\n• With high priority traffic, Priority Queue is recommended")

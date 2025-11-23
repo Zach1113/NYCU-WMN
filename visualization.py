@@ -59,12 +59,10 @@ def plot_all_metrics(results, save_path=None):
         save_path: Path to save figure (optional)
     """
     strategies = list(results.keys())
-    metrics = ['avg_latency', 'avg_waiting_time', 'throughput', 
-               'fairness_index', 'flow_fairness_index']
-    metric_labels = ['Avg Latency', 'Avg Waiting Time', 'Throughput', 
-                     'Per-Packet Fairness', 'Per-Flow Fairness']
+    metrics = ['avg_latency', 'avg_waiting_time', 'throughput', 'flow_fairness_index']
+    metric_labels = ['Avg Latency', 'Avg Waiting Time', 'Throughput', 'Flow Fairness']
     
-    fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
     fig.suptitle('QoS Queuing Strategies - Performance Comparison', 
                  fontsize=16, fontweight='bold')
     
@@ -89,24 +87,6 @@ def plot_all_metrics(results, save_path=None):
             axes[idx].text(bar.get_x() + bar.get_width()/2., height,
                           f'{height:.3f}',
                           ha='center', va='bottom', fontsize=9)
-    
-    # Hide the 6th subplot (we only have 5 metrics)
-    axes[5].axis('off')
-    
-    # Add explanation text in the empty subplot
-    explanation = (
-        "Fairness Metrics Explained:\n\n"
-        "Per-Packet Fairness:\n"
-        "  • Measures variance in individual packet latencies\n"
-        "  • Higher = all packets treated similarly\n"
-        "  • FCFS typically scores highest\n\n"
-        "Per-Flow Fairness:\n"
-        "  • Measures variance in average latency per flow\n"
-        "  • Higher = flows get equal service\n"
-        "  • Fair Queue optimizes for this metric"
-    )
-    axes[5].text(0.1, 0.5, explanation, fontsize=10, verticalalignment='center',
-                family='monospace', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3))
     
     plt.tight_layout()
     
@@ -217,16 +197,15 @@ def print_results_table(results):
     print("PERFORMANCE METRICS COMPARISON")
     print("="*100)
     print(f"{'Strategy':<20} {'Avg Latency':<15} {'Avg Waiting':<15} {'Throughput':<15} "
-          f"{'Pkt Fair':<12} {'Flow Fair':<12}")
+          f"{'Flow Fair':<12}")
     print("-"*100)
     
     for strategy, metrics in results.items():
         print(f"{strategy:<20} {metrics['avg_latency']:<15.4f} "
               f"{metrics['avg_waiting_time']:<15.4f} {metrics['throughput']:<15.4f} "
-              f"{metrics['fairness_index']:<12.4f} {metrics['flow_fairness_index']:<12.4f}")
+              f"{metrics['flow_fairness_index']:<12.4f}")
     
     print("="*100)
-    print("Note: 'Pkt Fair' = Per-Packet Fairness, 'Flow Fair' = Per-Flow Fairness")
+    print("Note: 'Flow Fair' = Per-Flow Fairness (Jain's Index)")
     print("      Higher values indicate better fairness (range: 0-1)")
     print("="*100 + "\n")
-

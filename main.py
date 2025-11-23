@@ -152,8 +152,8 @@ def run_variable_service_time_experiment():
     results = run_experiment(packets, strategies)
     print_results_table(results)
     
-    plot_comparison(results, metric='fairness_index',
-                   title='Variable Service Times - Fairness Comparison',
+    plot_comparison(results, metric='flow_fairness_index',
+                   title='Variable Service Times - Flow Fairness Comparison',
                    save_path='results/variable_service_fairness.png')
     
     return results

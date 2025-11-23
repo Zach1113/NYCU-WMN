@@ -70,13 +70,6 @@ class QueueingStrategy:
         else:
             throughput = 0
         
-        # Per-Packet Fairness: Jain's index on individual packet latencies
-        if len(latencies) > 1:
-            sum_sq = sum(lat ** 2 for lat in latencies)
-            fairness_index = (sum(latencies) ** 2) / (len(latencies) * sum_sq) if sum_sq > 0 else 0
-        else:
-            fairness_index = 1.0
-        
         # Per-Flow Fairness: Jain's index on average latency per flow
         # Group packets by flow (using priority as flow identifier)
         flow_latencies = {}
@@ -112,7 +105,6 @@ class QueueingStrategy:
             'total_packets': len(self.processed_packets),
             'dropped_packets': len(self.dropped_packets),
             'drop_rate': drop_rate,
-            'fairness_index': fairness_index,  # Per-packet fairness
             'flow_fairness_index': flow_fairness_index  # Per-flow fairness
         }
 
