@@ -52,17 +52,19 @@ def plot_comparison(results, metric='avg_latency', title=None, save_path=None):
 
 def plot_all_metrics(results, save_path=None):
     """
-    Create a comprehensive comparison of all metrics.
+    Create a comprehensive comparison of all metrics including both fairness types.
     
     Args:
         results: Dictionary mapping strategy name to metrics
         save_path: Path to save figure (optional)
     """
     strategies = list(results.keys())
-    metrics = ['avg_latency', 'avg_waiting_time', 'throughput', 'fairness_index']
-    metric_labels = ['Avg Latency', 'Avg Waiting Time', 'Throughput', 'Fairness Index']
+    metrics = ['avg_latency', 'avg_waiting_time', 'throughput', 
+               'fairness_index', 'flow_fairness_index']
+    metric_labels = ['Avg Latency', 'Avg Waiting Time', 'Throughput', 
+                     'Per-Packet Fairness', 'Per-Flow Fairness']
     
-    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+    fig, axes = plt.subplots(2, 3, figsize=(18, 10))
     fig.suptitle('QoS Queuing Strategies - Performance Comparison', 
                  fontsize=16, fontweight='bold')
     
@@ -78,12 +80,33 @@ def plot_all_metrics(results, save_path=None):
         axes[idx].set_title(label, fontsize=12, fontweight='bold')
         axes[idx].grid(axis='y', alpha=0.3)
         
+        # Rotate x-axis labels if needed
+        axes[idx].tick_params(axis='x', rotation=15)
+        
         # Add value labels
         for bar in bars:
             height = bar.get_height()
             axes[idx].text(bar.get_x() + bar.get_width()/2., height,
-                          f'{height:.2f}',
+                          f'{height:.3f}',
                           ha='center', va='bottom', fontsize=9)
+    
+    # Hide the 6th subplot (we only have 5 metrics)
+    axes[5].axis('off')
+    
+    # Add explanation text in the empty subplot
+    explanation = (
+        "Fairness Metrics Explained:\n\n"
+        "Per-Packet Fairness:\n"
+        "  • Measures variance in individual packet latencies\n"
+        "  • Higher = all packets treated similarly\n"
+        "  • FCFS typically scores highest\n\n"
+        "Per-Flow Fairness:\n"
+        "  • Measures variance in average latency per flow\n"
+        "  • Higher = flows get equal service\n"
+        "  • Fair Queue optimizes for this metric"
+    )
+    axes[5].text(0.1, 0.5, explanation, fontsize=10, verticalalignment='center',
+                family='monospace', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3))
     
     plt.tight_layout()
     
@@ -92,6 +115,7 @@ def plot_all_metrics(results, save_path=None):
         print(f"Saved comprehensive plot to {save_path}")
     
     return fig
+
 
 
 def plot_latency_distribution(strategies_packets, save_path=None):
@@ -184,20 +208,25 @@ def plot_priority_fairness(packets_by_priority, strategy_name, save_path=None):
 
 def print_results_table(results):
     """
-    Print a formatted table of results.
+    Print a formatted table of results with both fairness metrics.
     
     Args:
         results: Dictionary mapping strategy name to metrics
     """
-    print("\n" + "="*80)
+    print("\n" + "="*100)
     print("PERFORMANCE METRICS COMPARISON")
-    print("="*80)
-    print(f"{'Strategy':<20} {'Avg Latency':<15} {'Avg Waiting':<15} {'Throughput':<15} {'Fairness':<10}")
-    print("-"*80)
+    print("="*100)
+    print(f"{'Strategy':<20} {'Avg Latency':<15} {'Avg Waiting':<15} {'Throughput':<15} "
+          f"{'Pkt Fair':<12} {'Flow Fair':<12}")
+    print("-"*100)
     
     for strategy, metrics in results.items():
         print(f"{strategy:<20} {metrics['avg_latency']:<15.4f} "
               f"{metrics['avg_waiting_time']:<15.4f} {metrics['throughput']:<15.4f} "
-              f"{metrics['fairness_index']:<10.4f}")
+              f"{metrics['fairness_index']:<12.4f} {metrics['flow_fairness_index']:<12.4f}")
     
-    print("="*80 + "\n")
+    print("="*100)
+    print("Note: 'Pkt Fair' = Per-Packet Fairness, 'Flow Fair' = Per-Flow Fairness")
+    print("      Higher values indicate better fairness (range: 0-1)")
+    print("="*100 + "\n")
+

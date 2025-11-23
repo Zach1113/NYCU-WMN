@@ -10,16 +10,19 @@ from packet import Packet
 class QueueingStrategy:
     """Base class for queuing strategies."""
     
-    def __init__(self, name):
+    def __init__(self, name, max_queue_size=None):
         """
         Initialize the queuing strategy.
         
         Args:
             name: Name of the strategy
+            max_queue_size: Maximum queue size (None = infinite)
         """
         self.name = name
+        self.max_queue_size = max_queue_size
         self.packets = []
         self.processed_packets = []
+        self.dropped_packets = []  # Track dropped packets
         self.current_time = 0.0
     
     def add_packet(self, packet):
@@ -34,9 +37,13 @@ class QueueingStrategy:
         """Check if queue is empty."""
         raise NotImplementedError
     
+    def get_queue_size(self):
+        """Get current queue size."""
+        raise NotImplementedError
+    
     def get_metrics(self):
         """
-        Calculate performance metrics.
+        Calculate performance metrics including both per-packet and per-flow fairness.
         
         Returns:
             Dictionary with latency, throughput, and fairness metrics
@@ -47,7 +54,8 @@ class QueueingStrategy:
                 'avg_waiting_time': 0,
                 'throughput': 0,
                 'total_packets': 0,
-                'fairness_index': 0
+                'fairness_index': 0,
+                'flow_fairness_index': 0
             }
         
         latencies = [p.get_latency() for p in self.processed_packets if p.get_latency() is not None]
@@ -62,35 +70,67 @@ class QueueingStrategy:
         else:
             throughput = 0
         
-        # Fairness: calculate variance in latencies (lower variance = more fair)
+        # Per-Packet Fairness: Jain's index on individual packet latencies
         if len(latencies) > 1:
-            mean_lat = avg_latency
-            variance = sum((lat - mean_lat) ** 2 for lat in latencies) / len(latencies)
-            # Jain's fairness index
             sum_sq = sum(lat ** 2 for lat in latencies)
             fairness_index = (sum(latencies) ** 2) / (len(latencies) * sum_sq) if sum_sq > 0 else 0
         else:
             fairness_index = 1.0
+        
+        # Per-Flow Fairness: Jain's index on average latency per flow
+        # Group packets by flow (using priority as flow identifier)
+        flow_latencies = {}
+        for p in self.processed_packets:
+            flow_id = p.priority  # Use priority as flow identifier
+            if flow_id not in flow_latencies:
+                flow_latencies[flow_id] = []
+            if p.get_latency() is not None:
+                flow_latencies[flow_id].append(p.get_latency())
+        
+        # Calculate average latency per flow
+        avg_flow_latencies = []
+        for flow_id, lats in flow_latencies.items():
+            if lats:
+                avg_flow_latencies.append(sum(lats) / len(lats))
+        
+        # Calculate Jain's fairness index on flow averages
+        if len(avg_flow_latencies) > 1:
+            sum_flow = sum(avg_flow_latencies)
+            sum_sq_flow = sum(lat ** 2 for lat in avg_flow_latencies)
+            flow_fairness_index = (sum_flow ** 2) / (len(avg_flow_latencies) * sum_sq_flow) if sum_sq_flow > 0 else 0
+        else:
+            flow_fairness_index = 1.0
+        
+        # Calculate drop rate
+        total_offered = len(self.processed_packets) + len(self.dropped_packets)
+        drop_rate = len(self.dropped_packets) / total_offered if total_offered > 0 else 0
         
         return {
             'avg_latency': avg_latency,
             'avg_waiting_time': avg_waiting_time,
             'throughput': throughput,
             'total_packets': len(self.processed_packets),
-            'fairness_index': fairness_index
+            'dropped_packets': len(self.dropped_packets),
+            'drop_rate': drop_rate,
+            'fairness_index': fairness_index,  # Per-packet fairness
+            'flow_fairness_index': flow_fairness_index  # Per-flow fairness
         }
 
 
 class FCFSQueue(QueueingStrategy):
     """First-Come, First-Served queuing strategy."""
     
-    def __init__(self):
-        super().__init__("FCFS")
+    def __init__(self, max_queue_size=None):
+        super().__init__("FCFS", max_queue_size)
         self.queue = deque()
     
     def add_packet(self, packet):
-        """Add packet to FCFS queue."""
-        self.queue.append(packet)
+        """Add packet to FCFS queue, drop if full."""
+        if self.max_queue_size is not None and len(self.queue) >= self.max_queue_size:
+            # Queue is full, drop the packet
+            self.dropped_packets.append(packet)
+        else:
+            self.queue.append(packet)
     
     def process_next(self):
         """Process next packet in arrival order."""
@@ -107,6 +147,10 @@ class FCFSQueue(QueueingStrategy):
     def is_empty(self):
         """Check if FCFS queue is empty."""
         return len(self.queue) == 0
+    
+    def get_queue_size(self):
+        """Get current queue size."""
+        return len(self.queue)
 
 
 class PriorityQueue(QueueingStrategy):
@@ -207,9 +251,9 @@ class FairQueue(QueueingStrategy):
     across flows regardless of packet sizes or arrival patterns.
     """
     
-    def __init__(self):
+    def __init__(self, max_queue_size=None):
         """Initialize Fair Queue."""
-        super().__init__("Fair Queue")
+        super().__init__("Fair Queue", max_queue_size)
         self.flow_queues = {}  # Dictionary: flow_id -> deque of packets
         self.virtual_time = 0.0  # Virtual time for fairness calculation
         self.flow_finish_times = {}  # Dictionary: flow_id -> virtual finish time
@@ -230,7 +274,11 @@ class FairQueue(QueueingStrategy):
     
     def add_packet(self, packet):
         """
-        Add packet to its flow queue.
+        Add packet to its flow queue with per-flow fair dropping.
+        
+        Fair Queue uses per-flow queue limits to ensure fair dropping:
+        - Each flow gets equal share of buffer space
+        - Protects small flows from aggressive large flows
         
         Args:
             packet: Packet to add
@@ -242,14 +290,26 @@ class FairQueue(QueueingStrategy):
             self.flow_queues[flow_id] = deque()
             self.flow_finish_times[flow_id] = 0.0
         
+        # Fair dropping: check per-flow limit
+        if self.max_queue_size is not None:
+            # Calculate fair share per flow
+            num_flows = len(self.flow_queues)
+            per_flow_limit = max(1, self.max_queue_size // num_flows)
+            
+            # Check if this flow exceeds its fair share
+            if len(self.flow_queues[flow_id]) >= per_flow_limit:
+                # This flow has used its fair share, drop the packet
+                self.dropped_packets.append(packet)
+                return
+        
         self.flow_queues[flow_id].append(packet)
     
     def process_next(self):
         """
         Process next packet using Fair Queueing algorithm.
         
-        Selects the packet with the smallest virtual finish time,
-        which approximates bit-by-bit round-robin fairness.
+        Uses round-robin across flows to ensure each flow gets equal service,
+        providing max-min fairness.
         
         Returns:
             Processed packet or None if all queues empty
@@ -267,38 +327,21 @@ class FairQueue(QueueingStrategy):
         if not self.flow_queues:
             return None
         
-        # Find flow with minimum virtual finish time
-        min_flow_id = None
-        min_finish_time = float('inf')
-        
-        for flow_id, queue in self.flow_queues.items():
-            if len(queue) > 0:
-                # Calculate virtual finish time for the head packet
-                packet = queue[0]
-                
-                # Virtual start time is max of current virtual time and flow's last finish time
-                virtual_start = max(self.virtual_time, self.flow_finish_times[flow_id])
-                
-                # Virtual finish time = virtual start + packet size / link capacity
-                # We use service_time as a proxy for packet size / capacity
-                virtual_finish = virtual_start + packet.service_time
-                
-                if virtual_finish < min_finish_time:
-                    min_finish_time = virtual_finish
-                    min_flow_id = flow_id
-        
-        if min_flow_id is None:
-            return None
+        # Simple round-robin: serve flows in order of their finish times
+        # Flow with smallest finish time gets to send next
+        min_flow_id = min(self.flow_queues.keys(), 
+                         key=lambda fid: (self.flow_finish_times[fid], fid))
         
         # Dequeue packet from selected flow
         packet = self.flow_queues[min_flow_id].popleft()
         
-        # Update virtual time to the finish time of the packet being processed
-        virtual_start = max(self.virtual_time, self.flow_finish_times[min_flow_id])
-        virtual_finish = virtual_start + packet.service_time
+        # Update this flow's virtual finish time
+        # Each flow accumulates service time independently
+        self.flow_finish_times[min_flow_id] += packet.service_time
         
-        self.virtual_time = virtual_finish
-        self.flow_finish_times[min_flow_id] = virtual_finish
+        # Global virtual time tracks the minimum (ensures fairness)
+        if self.flow_finish_times:
+            self.virtual_time = min(self.flow_finish_times.values())
         
         # Process packet in real time
         packet.set_start_time(self.current_time)
@@ -316,3 +359,7 @@ class FairQueue(QueueingStrategy):
             True if no packets in any flow queue
         """
         return all(len(q) == 0 for q in self.flow_queues.values()) if self.flow_queues else True
+    
+    def get_queue_size(self):
+        """Get total queue size across all flows."""
+        return sum(len(q) for q in self.flow_queues.values())
