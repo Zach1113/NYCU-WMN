@@ -4,7 +4,7 @@ Demonstration of packet dropping with finite queue capacity.
 This shows how different strategies handle congestion when queues are limited.
 """
 
-from queuing_strategies import FCFSQueue, FairQueue
+from queuing_strategies import FCFSQueue, FairQueue, LASQueue
 from simulation import PacketGenerator, Simulator
 import copy
 
@@ -53,7 +53,8 @@ def demonstrate_packet_dropping():
         
         strategies = [
             ("FCFS", FCFSQueue(max_queue_size=queue_size)),
-            ("Fair Queue", FairQueue(max_queue_size=queue_size))
+            ("Fair Queue", FairQueue(max_queue_size=queue_size)),
+            ("LAS Queue", LASQueue(max_queue_size=queue_size))
         ]
         
         for name, strategy in strategies:

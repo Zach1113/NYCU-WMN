@@ -70,29 +70,44 @@ class QueueingStrategy:
         else:
             throughput = 0
         
-        # Per-Flow Fairness: Jain's index on average latency per flow
-        # Group packets by flow (using priority as flow identifier)
-        flow_latencies = {}
+        # Per-Flow Fairness: Throughput-based fairness across ALL flows
+        # This measures how fairly throughput is distributed, including starved flows
+        
+        # First, identify all flows (both processed and dropped)
+        all_flows = set()
+        flow_processed = {}
+        flow_offered = {}
+        
         for p in self.processed_packets:
-            flow_id = p.priority  # Use priority as flow identifier
-            if flow_id not in flow_latencies:
-                flow_latencies[flow_id] = []
-            if p.get_latency() is not None:
-                flow_latencies[flow_id].append(p.get_latency())
+            flow_id = p.priority
+            all_flows.add(flow_id)
+            flow_processed[flow_id] = flow_processed.get(flow_id, 0) + 1
+            flow_offered[flow_id] = flow_offered.get(flow_id, 0) + 1
         
-        # Calculate average latency per flow
-        avg_flow_latencies = []
-        for flow_id, lats in flow_latencies.items():
-            if lats:
-                avg_flow_latencies.append(sum(lats) / len(lats))
+        for p in self.dropped_packets:
+            flow_id = p.priority
+            all_flows.add(flow_id)
+            flow_offered[flow_id] = flow_offered.get(flow_id, 0) + 1
         
-        # Calculate Jain's fairness index on flow averages
-        if len(avg_flow_latencies) > 1:
-            sum_flow = sum(avg_flow_latencies)
-            sum_sq_flow = sum(lat ** 2 for lat in avg_flow_latencies)
-            flow_fairness_index = (sum_flow ** 2) / (len(avg_flow_latencies) * sum_sq_flow) if sum_sq_flow > 0 else 0
-        else:
+        # Calculate throughput ratio for each flow (processed/offered)
+        flow_throughput_ratios = []
+        for flow_id in all_flows:
+            processed = flow_processed.get(flow_id, 0)
+            offered = flow_offered.get(flow_id, 0)
+            ratio = processed / offered if offered > 0 else 0
+            flow_throughput_ratios.append(ratio)
+        
+        # Calculate Jain's fairness index on throughput ratios
+        if len(flow_throughput_ratios) > 1:
+            sum_ratios = sum(flow_throughput_ratios)
+            sum_sq_ratios = sum(r ** 2 for r in flow_throughput_ratios)
+            flow_fairness_index = (sum_ratios ** 2) / (len(flow_throughput_ratios) * sum_sq_ratios) if sum_sq_ratios > 0 else 0
+        elif len(flow_throughput_ratios) == 1:
+            # Only one flow exists
             flow_fairness_index = 1.0
+        else:
+            # No flows at all
+            flow_fairness_index = 0
         
         # Calculate drop rate
         total_offered = len(self.processed_packets) + len(self.dropped_packets)
