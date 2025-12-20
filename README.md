@@ -4,235 +4,139 @@ A comprehensive implementation and experimental analysis of Quality of Service (
 
 ## Overview
 
-This project implements and compares four fundamental queuing strategies:
+This project explores **Least Attained Service (LAS)** queuing and compares it with other QoS strategies:
 
 1. **First-Come, First-Served (FCFS)** - Processes packets in arrival order
-2. **Priority Queuing (PQ)** - Processes higher priority packets first
-3. **Round-Robin (RR)** - Distributes packets across multiple queues and serves them cyclically
-4. **Fair Queueing (FQ)** - Maintains per-flow queues with virtual finish times for fairness
+2. **Fair Queueing (FQ)** - Maintains per-flow queues with virtual finish times for fairness
+3. **Least Attained Service (LAS)** - Serves the flow with least cumulative service (from OS scheduling theory)
 
 ## Features
 
-- **Complete Implementation**: Full Python implementation of four queuing strategies from scratch
-- **Realistic Traffic Model**: Bursty traffic generation that better represents real-world network behavior (video streaming, file downloads, web browsing)
-- **Finite Queue Capacity**: Support for limited buffer sizes with packet dropping (configurable)
-- **Dual Fairness Metrics**: Measures both per-packet and per-flow fairness to show trade-offs
-- **Performance Metrics**: Measures latency, throughput, fairness, and drop rates for each strategy
-- **Comprehensive Testing**: Multiple experimental scenarios including high traffic, priority stress tests, and variable service times
-- **Visualization**: Detailed graphs and charts comparing strategy performance using matplotlib
+- **LAS Implementation**: Novel implementation of Least Attained Service scheduling for network packets
+- **Realistic Traffic Scenarios**: 5 scenarios including Message Texting, Video Streaming, Online Meeting, File Download, and Mice & Elephants
+- **Finite Queue Capacity**: Support for limited buffer sizes with packet dropping
+- **Throughput-Based Fairness**: Measures flow fairness including starved flows
+- **Performance Metrics**: Measures latency, throughput, fairness, and drop rates
+- **Comprehensive Report**: Detailed experiment report following academic structure
 
 ## Project Structure
 
 ```
 .
-├── packet.py                  # Packet class definition
-├── queuing_strategies.py      # Implementation of all four queuing strategies
-├── simulation.py              # Packet generation and simulation framework
-├── visualization.py           # Visualization and plotting utilities
-├── main.py                    # Main simulation runner with 5 experiments
-├── example.py                 # Simple example demonstrating basic usage
-├── demo_packet_dropping.py    # Demonstration of packet dropping with finite queues
-├── custom_simulation.py       # Interactive/CLI tool for custom simulations
-├── test_queuing.py            # Unit tests for all components
-├── requirements.txt           # Python dependencies
-├── .gitignore                # Git ignore patterns
-└── results/                   # Output directory for generated plots
-    ├── .gitkeep
-    ├── basic_comparison.png
-    ├── high_traffic_latency.png
-    ├── priority_fairness.png
-    ├── variable_service_fairness.png
-    └── latency_distribution.png
+├── packet.py                    # Packet class definition
+├── queuing_strategies.py        # Implementation of FCFS, FQ, and LAS
+├── simulation.py                # Packet generation and simulation framework
+├── visualization.py             # Visualization and plotting utilities
+├── main.py                      # Main simulation runner
+├── demo_packet_dropping.py      # Packet dropping demonstration
+├── demo_realistic_scenarios.py  # 5 realistic traffic scenarios
+├── EXPERIMENT_REPORT.md         # Complete experiment report
+├── README.md                    # This file
+├── test_queuing.py              # Unit tests
+├── requirements.txt             # Python dependencies
+└── results/                     # Output directory for generated plots
 ```
 
 ## Installation
 
-1. Clone the repository:
 ```bash
 git clone https://github.com/Zach1113/NYCU-WMN.git
 cd NYCU-WMN
-```
-
-2. Install dependencies:
-```bash
 pip install -r requirements.txt
 ```
 
-## Usage
+## Quick Start
 
-### Quick Start
-
-Run the simple example to see the basic functionality:
-
+### Run Realistic Scenarios Demo
 ```bash
-python example.py
+python3 demo_realistic_scenarios.py
 ```
 
-### Running Custom Simulations
+This runs 5 traffic scenarios comparing FCFS, Fair Queue, and LAS Queue.
 
-Use the custom simulation script to run experiments with your own parameters:
-
+### Run Packet Dropping Demo
 ```bash
-# Interactive mode
-python custom_simulation.py
-
-# Command-line mode
-python custom_simulation.py <num_packets> <arrival_rate> <high_priority_ratio> <seed>
-
-# Example: 200 packets, 3.0 arrival rate, 30% high priority, seed 42
-python custom_simulation.py 200 3.0 0.3 42
+python3 demo_packet_dropping.py
 ```
 
-### Running the Full Simulation
-
-Execute the main simulation script to run all experiments:
-
+### Run Main Experiments
 ```bash
-python main.py
+python3 main.py
 ```
 
-This will:
-- Run 5 different experimental scenarios
-- Generate performance metrics for each strategy
-- Create visualization plots in the `results/` directory
-- Print comprehensive performance comparisons to console
+## Key Results
 
-### Running Tests
+### Flow Fairness Comparison
 
-Execute the unit tests to verify functionality:
+| Scenario | FCFS | Fair Queue | LAS Queue | Winner |
+|----------|------|------------|-----------|--------|
+| Message Texting | 1.0000 | 1.0000 | 1.0000 | Tie |
+| Video Streaming | **0.9982** | 0.8583 | 0.9231 | FCFS |
+| Online Meeting | 0.9974 | **0.9996** | 0.9191 | FQ |
+| File Download | **0.9865** | 0.8354 | 0.8673 | FCFS |
+| Mice & Elephants | 0.4846 | 0.9421 | **0.9443** | LAS |
 
-```bash
-python test_queuing.py
-```
+### LAS Achieves Most Balanced Performance
 
-### Packet Dropping Demonstration
+| Metric | FCFS | Fair Queue | LAS Queue |
+|--------|------|------------|-----------|
+| **Average Fairness** | 0.8933 | 0.9271 | **0.9308** |
+| **Std Deviation** | 0.2044 | 0.0692 | **0.0429** |
+| **Minimum Score** | 0.4846 | 0.8354 | **0.8673** |
 
-See how strategies handle congestion with finite queue capacity:
+**LAS Queue provides the most consistent and reliable performance across all scenarios.**
 
-```bash
-python demo_packet_dropping.py
-```
+### LAS: Better Results with Simpler Implementation
 
-This demonstrates:
-- Packet dropping when queues are full
-- Drop rates under different congestion levels
-- Per-flow drop distribution
-- Comparison between infinite and finite queue capacities
+| Aspect | Fair Queue | LAS Queue |
+|--------|------------|-----------|
+| Lines of Code | 46 lines | 27 lines |
+| State Tracking | Virtual time + finish times | Only service counter |
+| Prediction Required | Must predict virtual finish time | No prediction needed |
 
-### Custom Experiments
+## Understanding LAS (Least Attained Service)
 
-You can create custom experiments by using the provided modules:
+LAS originated from **operating systems CPU scheduling** (also known as Foreground-Background scheduling):
 
-```python
-from packet import Packet
-from queuing_strategies import FCFSQueue, PriorityQueue, RoundRobinQueue, FairQueue
-from simulation import PacketGenerator, Simulator, run_experiment
-from visualization import plot_all_metrics
+> **Core Principle**: "Always serve the flow that has received the least amount of service so far."
 
-# Generate packets with bursty traffic (default)
-generator = PacketGenerator(seed=42)
-packets = generator.generate_packets(
-    num_packets=100,
-    arrival_rate=2.0,
-    priority_distribution={1: 0.5, 2: 0.3, 3: 0.2}
-)
+**Advantages:**
+- Optimal for unknown job/flow sizes
+- Favors short flows naturally (no explicit priority needed)
+- Simpler than Fair Queueing (no virtual time calculation)
+- More feasible for real-world implementation
 
-# Create strategies (with optional finite queue capacity)
-strategies = [
-    FCFSQueue(),                    # Infinite capacity
-    FCFSQueue(max_queue_size=50),   # Finite capacity (drops when full)
-    PriorityQueue(),
-    RoundRobinQueue(num_queues=3),
-    FairQueue(max_queue_size=50)    # Fair Queue with finite capacity
-]
+## Strategy Selection Guidelines
 
-# Run experiment and visualize
-results = run_experiment(packets, strategies)
-plot_all_metrics(results, save_path='my_results.png')
-
-# Check drop rates
-for name, metrics in results.items():
-    print(f"{name}: {metrics['dropped_packets']} dropped ({metrics['drop_rate']*100:.1f}%)")
-```
-
-## Experimental Scenarios
-
-The simulation includes five comprehensive experiments:
-
-1. **Basic Comparison**: Moderate traffic with mixed priorities
-2. **High Traffic Load**: Stress test with 500 packets and high arrival rate
-3. **Priority Stress Test**: Heavy load of high-priority packets
-4. **Variable Service Times**: Wide range of packet processing times
-5. **Latency Distribution Analysis**: Detailed statistical analysis
+| Use Case | Recommended Strategy |
+|----------|---------------------|
+| Simple, low-priority traffic | FCFS |
+| Equal real-time flows (VoIP, meetings) | Fair Queue |
+| Mixed mice/elephant flows | **LAS Queue** |
+| Resource-constrained devices | **LAS Queue** |
+| Unknown traffic patterns | **LAS Queue** |
 
 ## Performance Metrics
-
-Each strategy is evaluated on:
 
 - **Average Latency**: Total delay from arrival to completion
 - **Average Waiting Time**: Time spent waiting in queue
 - **Throughput**: Packets processed per unit time
-- **Dropped Packets**: Number of packets dropped when queue is full (if finite capacity)
-- **Drop Rate**: Percentage of offered packets that were dropped
-- **Flow Fairness**: Jain's fairness index on average latency per flow (measures how equally flows are served)
-
-## Understanding Flow Fairness
-
-This project focuses on **Per-Flow Fairness** (Jain's Fairness Index) as the primary metric for QoS:
-
-- **What it measures**: How equally different flows (groups of packets) are served
-- **Why it matters**: In multi-tenant systems, we want to prevent aggressive flows from starving small flows
-- **The Goal**: A value close to 1.0 means all flows receive equal service quality
-- **Fair Queue's Advantage**: By using virtual finish times and per-flow queues, Fair Queue achieves superior flow fairness compared to FCFS.
-
-## Traffic Model
-
-The simulation uses a **bursty traffic model** to represent real-world network behavior:
-
-- **Bursty arrivals**: Flows send packets in bursts (like video streaming, file downloads)
-- **Realistic patterns**: Better demonstrates Fair Queue's benefits compared to random (Poisson) arrivals
-- **Configurable**: Can switch to Poisson model with `traffic_model='poisson'` parameter
-
-## Key Findings
-
-From the experimental results with bursty traffic:
-
-- **FCFS**: Good per-packet fairness but doesn't actively protect small flows
-- **Priority Queue**: Efficiently handles high-priority packets but intentionally unfair (may starve low-priority traffic)
-- **Round-Robin**: Balances load across queues with good per-packet fairness
-- **Fair Queue**: **Best per-flow fairness** (0.90+) - actively protects small flows from large bursts, ideal for multi-tenant systems
-
-## Implementation Details
-
-### Packet Class
-- Stores packet metadata (id, arrival_time, priority, size, service_time)
-- Tracks timing information (start_time, finish_time)
-- Calculates latency and waiting time
-
-### Queuing Strategies
-- **FCFS**: Uses `collections.deque` for FIFO processing
-- **Priority Queue**: Uses `heapq` for priority-based processing
-- **Round-Robin**: Maintains multiple queues with cyclic scheduling
-- **Fair Queue**: Maintains per-flow queues with virtual finish time calculation for max-min fairness
-
-### Queue Capacity & Dropping Policies
-
-All strategies support configurable `max_queue_size`. When the limit is reached:
-
-- **FCFS / Priority / Round-Robin**: Use **Global Tail Drop**. The queue is shared globally; if one flow fills it (e.g., arrives first), subsequent packets from any flow are dropped.
-- **Fair Queue**: Uses **Per-Flow Fair Dropping**. The buffer space is dynamically partitioned among active flows. This prevents aggressive flows from hogging the buffer and ensures small flows still get space during congestion.
-
-### Simulation Framework
-- Generates packets with bursty arrival patterns (default) or Poisson process
-- Supports configurable priority and size distributions
-- Event-driven simulation with accurate timing
-- Realistic traffic model representing video, downloads, and web traffic
+- **Drop Rate**: Percentage of packets dropped
+- **Flow Fairness**: Jain's fairness index on throughput ratios (includes starved flows)
 
 ## Requirements
 
 - Python 3.7+
 - matplotlib >= 3.5.0
 - numpy >= 1.21.0
+
+## Documentation
+
+See [EXPERIMENT_REPORT.md](EXPERIMENT_REPORT.md) for the complete experiment report including:
+- System model and network environment
+- Algorithm implementations
+- Detailed results for all 5 scenarios
+- Conclusions and strategy recommendations
 
 ## License
 
@@ -241,7 +145,3 @@ This project is developed for educational purposes as part of NYCU Wireless and 
 ## Author
 
 Zach1113
-
-## Acknowledgments
-
-This implementation is based on standard queueing theory and network QoS principles.
